@@ -1,6 +1,6 @@
 async function checkLogin() {
     try {
-        const response = await fetch("/api/admin/status");
+        const response = await fetch("/api/auth/status");
 
         if (!response.ok) return;
 
@@ -26,7 +26,7 @@ async function login(event) {
     form.append("password", password);
 
     try {
-        const response = await fetch("/api/admin/login", {
+        const response = await fetch("/api/auth/login", {
             method: "POST",
             body: form
         });
@@ -37,9 +37,9 @@ async function login(event) {
             message.textContent = data.detail || "Login failed.";
             return;
         }
-
-        message.textContent = "";
         showDashboard();
+        message.textContent = "";
+        
     } catch (error) {
         console.error(error);
         message.textContent = "Could not connect to the backend.";
@@ -55,7 +55,7 @@ function showDashboard() {
 
 async function logout() {
     try {
-        await fetch("/api/admin/logout", {
+        await fetch("/api/auth/logout", {
             method: "POST"
         });
     } finally {
