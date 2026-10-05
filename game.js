@@ -1,52 +1,113 @@
 const params = new URLSearchParams(window.location.search);
 const gameId = params.get("id");
-async function loadGame(){
-    if (!gameId){ document.getElementById("game-dtails").textContent = "Game ID Missing.";
+
+async function loadGame() {
+    const container = document.getElementById("game-details");
+
+    if (!gameId) {
+        container.innerHTML = '<p class="empty">Game ID missing.</p>';
         return;
     }
-    const response = await fetch(`/api/games/${gameId}`);
-    if (!response.ok){ document.getElementById("game-deatails").textContent = "Game not Found";return;}
-    const game = await response.json();
-    document.getElementById("game-details").innerHTML = ` 
-       <div class="game-card">
-          <img 
-             src="${game.thumbnail_url|| "https://placehold.co/800x500?text=Game"}"alt="${game.name}">
-          <div class="game-card-content">
-             <h1>
-                ${game.name}
-              </h1>
-              <p class = "category">
-                 ${game.category}
-               </p>
-               <br>
-               <p> 
-                  Creator: ${game.creator}
-               </p>
-               <p> 
-                  ${game.play_count} plays
-               </p>
-               <br>
-               < button class = "primary-button"
-               oneclick="playGame()">
-                  --> PLAY NOW!!
-               </button>
-               ${game.github_url?`
-                   <p style="margin-top:20px">
-                      <a href = "${game.github_url}"
-                      target="_blank">
-                         View GitHub
-                      </a>
-                   </p>
-                   `: ""}
-           </div
-       </div>
-    `;
-       
+
+    try {
+        const response = await fetch(`/api/games/${encodeURIComponent(gameId)}`);
+
+        if (!response.ok) {
+            container.innerHTML = '<p class="empty">Game not found.</p>';
+            return;
+        }
+
+        const game = await response.json();
+
+        const image =
+            game.thumbnail_url ||
+            "https://placehold.co/800x500?text=Game";
+
+        container.innerHTML = `
+            <article class="game-details-wrap">
+                <img src="${escapeHtml(image)}" alt="${escapeHtml(game.name || "Game")}">
+
+                <h1>${escapeHtml(game.name || "Untitled Game")}</h1>
+
+                <p class="category">
+                    ${escapeHtml(game.category || "Uncategorized")}
+                </p>
+
+                <p class="description">
+                    ${escapeHtml(game.description || "")}
+                </p>
+
+                <p class="plays">
+                    Creator: ${escapeHtml(game.creator || "Unknown")}
+                    · ${Number(game.play_count || 0)} plays
+                </p>
+
+                <button class="primary-button" type="button" onclick="playGame()">
+                    PLAY NOW
+                </button>
+
+                ${
+                    game.github_url
+                        ? `
+                            <p style="margin-top:20px">
+                                <a class="back-link"
+                                   href="${escapeHtml(game.github_url)}"
+                                   target="_blank"
+                                   rel="noopener">
+                                    View GitHub
+                                </a>
+                            </p>
+                          `
+                        : ""
+                }
+            </article>
+        `;
+    } catch (error) {
+        console.error(error);
+        container.innerHTML =
+            '<p class="empty">Unable to load this game.</p>';
+    }
 }
-async function playGame(){
-    await fetch(`/api/games/${gameId}/play`,{method: "POST"});
-    const response = await fetch(`/api/games/${gameId}`);
-    const game = await response.json();
-    window.location.href = game.playable_url;}
+
+async function playGame() {
+    if (!gameId) return;
+
+    try {
+        const playResponse = await fetch(
+            `/api/games/${encodeURIComponent(gameId)}/play`,
+            { method: "POST" }
+        );
+
+        if (!playResponse.ok) {
+            throw new Error("Could not register play.");
+        }
+
+        const response = await fetch(
+            `/api/games/${encodeURIComponent(gameId)}`
+        );
+
+        if (!response.ok) {
+            throw new Error("Could not reload game.");
+        }
+
+        const game = await response.json();
+
+        if (!game.playable_url) {
+            alert("This game does not have a playable URL yet.");
+            return;
+        }
+
+        window.location.href = game.playable_url;
+    } catch (error) {
+        console.error(error);
+        alert("Unable to start the game.");
+    }
+}
+
+function escapeHtml(value) {
+    const div = document.createElement("div");
+    div.textContent = String(value);
+    return div.innerHTML;
+}
 
 loadGame();
